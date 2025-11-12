@@ -1,0 +1,552 @@
+--// WickingMOD GUI Setup
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+if playerGui:FindFirstChild("WickingMOD") then
+    playerGui:FindFirstChild("WickingMOD"):Destroy()
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "WickingMOD"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
+
+--// Color Palette (Dark Theme Modern)
+local colors = {
+    primary = Color3.fromRGB(30, 30, 40),
+    secondary = Color3.fromRGB(45, 45, 55),
+    accent = Color3.fromRGB(0, 168, 87),
+    danger = Color3.fromRGB(230, 74, 25),
+    info = Color3.fromRGB(66, 133, 244),
+    text = Color3.fromRGB(230, 230, 230),
+    subtext = Color3.fromRGB(180, 180, 180),
+    toggleOn = Color3.fromRGB(0, 150, 255),
+    toggleOff = Color3.fromRGB(255, 100, 0)
+}
+
+--// Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 480, 0, 500)
+mainFrame.Position = UDim2.new(0.5, -240, 0.5, -250)
+mainFrame.BackgroundColor3 = colors.primary
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 15)
+
+-- Shadow
+local shadow = Instance.new("ImageLabel")
+shadow.Name = "Shadow"
+shadow.Size = UDim2.new(1, 20, 1, 20)
+shadow.Position = UDim2.new(0, -10, 0, -10)
+shadow.Image = "rbxassetid://1316045217"
+shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+shadow.ImageTransparency = 0.85
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+shadow.ZIndex = 0
+shadow.BackgroundTransparency = 1
+shadow.Parent = mainFrame
+
+--// App Title
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 40)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "Nauther | Fish IT"
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 24
+titleLabel.TextColor3 = colors.accent
+titleLabel.Parent = mainFrame
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Position = UDim2.new(0, 12, 0, 0)
+titleLabel.ClipsDescendants = true
+
+--// Input service for drag & keybinds
+local UserInputService = game:GetService("UserInputService")
+
+--// Minimize and Hide Buttons
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Name = "MinimizeBtn"
+minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+minimizeBtn.Position = UDim2.new(1, -70, 0, 5)
+minimizeBtn.AnchorPoint = Vector2.new(0, 0)
+minimizeBtn.BackgroundColor3 = colors.secondary
+minimizeBtn.Text = "-"
+minimizeBtn.Font = Enum.Font.SourceSansBold
+minimizeBtn.TextSize = 20
+minimizeBtn.TextColor3 = colors.text
+Instance.new("UICorner", minimizeBtn).CornerRadius = UDim.new(0,6)
+minimizeBtn.Parent = mainFrame
+
+local hideBtn = Instance.new("TextButton")
+hideBtn.Name = "HideBtn"
+hideBtn.Size = UDim2.new(0, 30, 0, 30)
+hideBtn.Position = UDim2.new(1, -35, 0, 5)
+hideBtn.AnchorPoint = Vector2.new(0, 0)
+hideBtn.BackgroundColor3 = colors.secondary
+hideBtn.Text = "x"
+hideBtn.Font = Enum.Font.SourceSansBold
+hideBtn.TextSize = 18
+hideBtn.TextColor3 = colors.text
+Instance.new("UICorner", hideBtn).CornerRadius = UDim.new(0,6)
+hideBtn.Parent = mainFrame
+
+-- remember original full size for restore
+local ORIGINAL_SIZE = mainFrame.Size
+local minimized = false
+
+minimizeBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if minimized then
+        -- collapse to title-only
+        for _, child in ipairs(mainFrame:GetChildren()) do
+            if child ~= titleLabel and child ~= minimizeBtn and child ~= hideBtn and child ~= shadow then
+                if child:IsA("GuiObject") then child.Visible = false end
+            end
+        end
+        mainFrame:TweenSize(UDim2.new(ORIGINAL_SIZE.X.Scale, ORIGINAL_SIZE.X.Offset, 0, 48), "Out", "Quad", 0.18, true)
+        minimizeBtn.Text = "+"
+    else
+        -- restore
+        mainFrame:TweenSize(ORIGINAL_SIZE, "Out", "Quad", 0.18, true)
+        for _, child in ipairs(mainFrame:GetChildren()) do
+            if child ~= titleLabel and child ~= minimizeBtn and child ~= hideBtn and child ~= shadow then
+                if child:IsA("GuiObject") then child.Visible = true end
+            end
+        end
+        minimizeBtn.Text = "-"
+    end
+end)
+
+-- hide completely (toggleable via RightControl key)
+hideBtn.MouseButton1Click:Connect(function()
+    screenGui.Enabled = false
+end)
+
+-- Keybind to toggle GUI visibility back (RightControl)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.RightControl then
+        screenGui.Enabled = not screenGui.Enabled
+    end
+end)
+
+--// Make the frame draggable by the title area
+titleLabel.Active = true
+titleLabel.Selectable = true
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+titleLabel.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+titleLabel.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+--// Tabs (Vertical left side)
+local tabsFrame = Instance.new("Frame")
+tabsFrame.Size = UDim2.new(0, 140, 1, -40)
+tabsFrame.Position = UDim2.new(0, 10, 0, 40)
+tabsFrame.BackgroundTransparency = 1
+tabsFrame.Parent = mainFrame
+
+local tabLayout = Instance.new("UIListLayout", tabsFrame)
+tabLayout.FillDirection = Enum.FillDirection.Vertical
+tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+tabLayout.Padding = UDim.new(0, 8)
+
+local function createTab(name)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 35)
+    btn.Text = name
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.TextColor3 = colors.text
+    btn.BackgroundColor3 = colors.secondary
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    btn.Parent = tabsFrame
+    return btn
+end
+
+local mainTab = createTab("Main")
+local autoTab = createTab("Automation")
+local settingsTab = createTab("Settings")
+
+--// Tab Container
+local tabContainer = Instance.new("Frame")
+tabContainer.Size = UDim2.new(1, -160, 1, -40)
+tabContainer.Position = UDim2.new(0, 150, 0, 40)
+tabContainer.BackgroundTransparency = 1
+tabContainer.Parent = mainFrame
+
+local function newContentFrame()
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundTransparency = 1
+    frame.Visible = false
+    frame.Parent = tabContainer
+    local layout = Instance.new("UIListLayout", frame)
+    layout.Padding = UDim.new(0, 10)
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.VerticalAlignment = Enum.VerticalAlignment.Top
+    return frame
+end
+
+local mainContent = newContentFrame()
+local autoContent = newContentFrame()
+local settingsContent = newContentFrame()
+mainContent.Visible = true
+
+local function switchTab(tab)
+    mainContent.Visible = (tab == "Main")
+    autoContent.Visible = (tab == "Automation")
+    settingsContent.Visible = (tab == "Settings")
+    for _, button in ipairs(tabsFrame:GetChildren()) do
+        if button:IsA("TextButton") then
+            button.BackgroundColor3 = (button.Text == tab) and colors.accent or colors.secondary
+        end
+    end
+end
+
+mainTab.MouseButton1Click:Connect(function() switchTab("Main") end)
+autoTab.MouseButton1Click:Connect(function() switchTab("Automation") end)
+settingsTab.MouseButton1Click:Connect(function() switchTab("Settings") end)
+
+--// Helper: create input row
+local function createInput(parent, labelText, defaultValue)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, -20, 0, 35)
+    frame.BackgroundColor3 = colors.secondary
+    frame.BackgroundTransparency = 0.2
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(0.6, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = labelText
+    label.Font = Enum.Font.SourceSansBold
+    label.TextColor3 = colors.text
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Position = UDim2.new(0, 10, 0, 0)
+
+    local input = Instance.new("TextBox", frame)
+    input.Size = UDim2.new(0.35, 0, 0.8, 0)
+    input.Position = UDim2.new(0.6, 0, 0.1, 0)
+    input.BackgroundTransparency = 1
+    input.TextColor3 = colors.accent
+    input.Text = defaultValue
+    input.PlaceholderText = ""
+    input.Font = Enum.Font.SourceSans
+    input.TextSize = 14
+    input.TextXAlignment = Enum.TextXAlignment.Center
+    input.ClearTextOnFocus = false
+
+    return input
+end
+
+--// Main Tab Inputs
+local chargeInput = createInput(mainContent, "Wait After Charge (s)", "0.1")
+local miniInput = createInput(mainContent, "Wait After Minigame (s)", "1.3")
+local betweenInput = createInput(mainContent, "Wait Between Cycles (s)", "0.1")
+local loopInput = createInput(mainContent, "Cycle Limit", "inf")
+
+--// Infinite Loop Toggle
+local infiniteLoop = true
+local toggleInfinite = Instance.new("TextButton")
+toggleInfinite.Size = UDim2.new(1, -20, 0, 35)
+toggleInfinite.Text = "INFINITE LOOP: ON"
+toggleInfinite.TextColor3 = colors.text
+toggleInfinite.Font = Enum.Font.SourceSansBold
+toggleInfinite.TextSize = 14
+toggleInfinite.BackgroundColor3 = colors.toggleOn
+Instance.new("UICorner", toggleInfinite).CornerRadius = UDim.new(0,8)
+toggleInfinite.Parent = mainContent
+
+toggleInfinite.MouseButton1Click:Connect(function()
+    infiniteLoop = not infiniteLoop
+    toggleInfinite.Text = infiniteLoop and "INFINITE LOOP: ON" or "INFINITE LOOP: OFF"
+    toggleInfinite.BackgroundColor3 = infiniteLoop and colors.toggleOn or colors.toggleOff
+    loopInput.Text = infiniteLoop and "inf" or (loopInput.Text == "inf" and "1" or loopInput.Text)
+end)
+
+--// Start / Stop / Reset Buttons
+local buttonContainer = Instance.new("Frame")
+buttonContainer.Size = UDim2.new(1, -20, 0, 40)
+buttonContainer.BackgroundTransparency = 1
+buttonContainer.Parent = mainContent
+local hLayout = Instance.new("UIListLayout", buttonContainer)
+hLayout.FillDirection = Enum.FillDirection.Horizontal
+hLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+hLayout.Padding = UDim.new(0, 8)
+
+local function makeButton(text, color)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.33, -5, 1, 0)
+    btn.Text = text
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 14
+    btn.TextColor3 = colors.text
+    btn.BackgroundColor3 = color
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    btn.Parent = buttonContainer
+    return btn
+end
+
+local startButton = makeButton("START", colors.accent)
+local stopButton = makeButton("STOP", colors.danger)
+local resetButton = makeButton("RESET", colors.info)
+
+--// Automation Tab: Toggle Fixed Fish Limit Before Respawn
+local FISH_LIMIT = 2000
+local autoRespawnEnabled = true
+local toggleAutoRespawn = Instance.new("TextButton")
+toggleAutoRespawn.Size = UDim2.new(1,-20,0,35)
+toggleAutoRespawn.Text = "LIMIT FISH BEFORE RESPAWN: ON"
+toggleAutoRespawn.Font = Enum.Font.SourceSansBold
+toggleAutoRespawn.TextSize = 14
+toggleAutoRespawn.TextColor3 = colors.text
+toggleAutoRespawn.BackgroundColor3 = colors.toggleOn
+Instance.new("UICorner", toggleAutoRespawn).CornerRadius = UDim.new(0,8)
+toggleAutoRespawn.Parent = autoContent
+
+toggleAutoRespawn.MouseButton1Click:Connect(function()
+    autoRespawnEnabled = not autoRespawnEnabled
+    toggleAutoRespawn.Text = autoRespawnEnabled and "LIMIT FISH BEFORE RESPAWN: ON" or "LIMIT FISH BEFORE RESPAWN: OFF"
+    toggleAutoRespawn.BackgroundColor3 = autoRespawnEnabled and colors.toggleOn or colors.toggleOff
+end)
+
+--// SETTINGS: Teleport Island + Player Dropdown
+local islandCFrame = {
+    ["Sunken Island"] = Vector3.new(-1471, -3, 1929),
+    ["Ice Island"] = Vector3.new(3157, -1303, 1439),
+    ["Volcano Island"] = Vector3.new(-2038, 3, 3650),
+    ["Forest Island"] = Vector3.new(-32, 4, 2773),
+    ["Desert Island"] = Vector3.new(-519, 24, 189),
+    ["River Island"] = Vector3.new(-3095, 1, 2177),
+    ["Sky Island"] = Vector3.new(968, 1, 4854),
+    ["Cave Island"] = Vector3.new(-658, 3, 719),
+    ["Mystic Island"] = Vector3.new(1611, 4, 3280)
+}
+
+local function createDropdown(parent, title, options)
+    local dropdown = Instance.new("TextButton")
+    dropdown.Size = UDim2.new(1, -20, 0, 35)
+    dropdown.BackgroundColor3 = colors.secondary
+    dropdown.Text = title
+    dropdown.Font = Enum.Font.SourceSansBold
+    dropdown.TextColor3 = colors.text
+    dropdown.TextSize = 14
+    Instance.new("UICorner", dropdown).CornerRadius = UDim.new(0,8)
+    dropdown.Parent = parent
+    dropdown.ZIndex = 3
+
+    local menu = Instance.new("Frame")
+    menu.Size = UDim2.new(1, 0, 0, 0)
+    menu.Position = UDim2.new(0,0,0,35)
+    menu.BackgroundColor3 = colors.secondary
+    menu.BorderSizePixel = 0
+    menu.ClipsDescendants = true
+    menu.ZIndex = 2
+    Instance.new("UICorner", menu).CornerRadius = UDim.new(0,8)
+    menu.Parent = parent
+
+    local layout = Instance.new("UIListLayout", menu)
+    layout.Padding = UDim.new(0,2)
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local dropdownOpen = false
+
+    for _, optionName in ipairs(options) do
+        local option = Instance.new("TextButton")
+        option.Size = UDim2.new(1, -10, 0, 30)
+        option.Position = UDim2.new(0,5,0,0)
+        option.BackgroundColor3 = colors.primary
+        option.Text = optionName
+        option.TextColor3 = colors.text
+        option.Font = Enum.Font.SourceSans
+        option.TextSize = 14
+        Instance.new("UICorner", option).CornerRadius = UDim.new(0,6)
+        option.ZIndex = 3
+        option.Parent = menu
+
+        option.MouseButton1Click:Connect(function()
+            dropdown.Text = title..": "..optionName
+            dropdownOpen = false
+            menu:TweenSize(UDim2.new(1,0,0,0), "Out", "Quad", 0.3, true)
+            -- Teleport Logic
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                if title:find("Island") then
+                    hrp.CFrame = CFrame.new(islandCFrame[optionName] + Vector3.new(0,5,0))
+                else
+                    local target = game.Players:FindFirstChild(optionName)
+                    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                        hrp.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(0,5,0)
+                    end
+                end
+            end
+        end)
+    end
+
+    dropdown.MouseButton1Click:Connect(function()
+        dropdownOpen = not dropdownOpen
+        local count = 0
+        for _, child in ipairs(menu:GetChildren()) do
+            if child:IsA("TextButton") then count = count + 1 end
+        end
+        local targetHeight = dropdownOpen and (count*32) or 0
+        menu:TweenSize(UDim2.new(1,0,0,targetHeight), "Out", "Quad", 0.3, true)
+    end)
+
+    return dropdown
+end
+
+-- Island Dropdown
+local islandDropdown = createDropdown(settingsContent, "Teleport Island", {
+    "Sunken Island","Ice Island","Volcano Island","Forest Island","Desert Island",
+    "River Island","Sky Island","Cave Island","Mystic Island"
+})
+
+-- Player Dropdown
+local playerDropdown = createDropdown(settingsContent, "Teleport Player", (function()
+    local list = {}
+    for _, plr in pairs(game.Players:GetPlayers()) do
+        if plr ~= player then
+            table.insert(list, plr.Name)
+        end
+    end
+    return list
+end)())
+
+--// WickingMOD Fishing Logic
+local running = false
+local net = game:GetService("ReplicatedStorage"):WaitForChild("Packages")
+    :WaitForChild("_Index"):WaitForChild("sleitnick_net@0.2.0")
+    :WaitForChild("net")
+local argsList = {{ -31.98394012451172, 0.5, 1762885213.773613 }}
+
+local function startFishing()
+    if running then return end
+    running = true
+    startButton.Text = "RUNNING..."
+    startButton.BackgroundColor3 = colors.subtext
+
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+
+    -- Disable local fishing scripts
+    for _, obj in ipairs(character:GetDescendants()) do
+        if obj:IsA("LocalScript") and string.find(obj.Name:lower(), "fish") then
+            obj.Disabled = true
+        end
+    end
+
+    local rod = character:FindFirstChildOfClass("Tool")
+    if rod then
+        for _, obj in ipairs(rod:GetDescendants()) do
+            if obj:IsA("LocalScript") and string.find(obj.Name:lower(), "fish") then
+                obj.Disabled = true
+            end
+        end
+    end
+
+    local WAIT_AFTER_CHARGE = tonumber(chargeInput.Text) or 0.1
+    local WAIT_AFTER_MINIGAME = tonumber(miniInput.Text) or 1.3
+    local WAIT_BETWEEN_CYCLES = tonumber(betweenInput.Text) or 0.1
+    local maxCycles = infiniteLoop and math.huge or tonumber(loopInput.Text) or 1
+    local fishCount = 0
+
+    while running do
+        for i = 1, maxCycles do
+            if not running then break end
+
+            local args = argsList[1]
+            net:WaitForChild("RF/ChargeFishingRod"):InvokeServer()
+            task.wait(WAIT_AFTER_CHARGE)
+            net:WaitForChild("RF/RequestFishingMinigameStarted"):InvokeServer(unpack(args))
+            task.wait(WAIT_AFTER_MINIGAME)
+            net:WaitForChild("RE/FishingCompleted"):FireServer()
+            task.wait(WAIT_BETWEEN_CYCLES)
+
+            fishCount = fishCount + 1
+
+            -- Auto Respawn
+            if autoRespawnEnabled and fishCount >= FISH_LIMIT then
+                fishCount = 0
+                local char = player.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    local root = char.HumanoidRootPart
+                    local savedCFrame = root.CFrame
+                    player.Character:BreakJoints()
+                    local newChar = player.CharacterAdded:Wait()
+                    local newRoot = newChar:WaitForChild("HumanoidRootPart")
+                    task.wait(1)
+                    newRoot.CFrame = savedCFrame
+                    net:WaitForChild("RE/EquipToolFromHotbar"):FireServer(1)
+                    task.wait(2)
+                end
+            end
+
+            if not infiniteLoop and i >= maxCycles then
+                running = false
+                break
+            end
+        end
+    end
+
+    startButton.Text = "START"
+    startButton.BackgroundColor3 = colors.accent
+    running = false
+end
+
+local function stopFishing()
+    running = false
+    startButton.Text = "START"
+    startButton.BackgroundColor3 = colors.accent
+end
+
+local function resetAll()
+    stopFishing()
+    chargeInput.Text = "0.1"
+    miniInput.Text = "1.3"
+    betweenInput.Text = "0.1"
+    loopInput.Text = "inf"
+    infiniteLoop = true
+    toggleInfinite.Text = "INFINITE LOOP: ON"
+    toggleInfinite.BackgroundColor3 = colors.toggleOn
+    autoRespawnEnabled = true
+    toggleAutoRespawn.Text = "LIMIT FISH BEFORE RESPAWN: ON"
+    toggleAutoRespawn.BackgroundColor3 = colors.toggleOn
+end
+
+-- Connect Buttons
+startButton.MouseButton1Click:Connect(startFishing)
+stopButton.MouseButton1Click:Connect(stopFishing)
+resetButton.MouseButton1Click:Connect(resetAll)
